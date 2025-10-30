@@ -1,0 +1,17 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.container {
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+.nav { background:#333; color:white; padding:8px 12px; display:flex; justify-content:space-between }
+.nav a{ color:white; text-decoration:none }
+
+.form { display:flex; flex-direction:column; gap:8px }
+.form input{ padding:8px }
+.btn{ padding:8px 12px; cursor:pointer }

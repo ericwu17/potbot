@@ -1,0 +1,11 @@
+-- Create users table for potbot
+
+CREATE DATABASE IF NOT EXISTS potbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE potbot;
+
+CREATE TABLE IF NOT EXISTS users (
+  user_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  username VARCHAR(50) NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
