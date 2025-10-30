@@ -1,6 +1,6 @@
-import React, {useEffect, useState} from 'react'
+import React, { useEffect, useState } from 'react'
 
-function Landing({setUser}){
+function Landing({ setUser }) {
   const [isRegister, setIsRegister] = useState(false)
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
@@ -8,7 +8,7 @@ function Landing({setUser}){
   const [confirmPassword, setConfirmPassword] = useState("")
   const [err, setErr] = useState(null)
 
-  async function submit(e){
+  async function submit(e) {
     e.preventDefault()
     setErr(null)
 
@@ -23,11 +23,11 @@ function Landing({setUser}){
       return
     }
 
-  const url = isRegister ? '/api/register' : '/api/login'
-  const body = isRegister ? { email, password, username } : { username, password }
+    const url = isRegister ? '/api/register' : '/api/login'
+    const body = isRegister ? { email, password, username } : { username, password }
     const res = await fetch(url, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(body)
     })
@@ -44,90 +44,132 @@ function Landing({setUser}){
     <div className="container">
       <h2>{isRegister ? 'Create an account' : 'Login'}</h2>
       <form className="form" onSubmit={submit}>
-        <input 
-          placeholder="Username" 
-          value={username} 
-          onChange={e=>setUsername(e.target.value)}
-          required 
+        <input
+          placeholder="Username"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          required
         />
-        <input 
-          placeholder="Password" 
-          type="password" 
-          value={password} 
-          onChange={e=>setPassword(e.target.value)}
+        <input
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
           required
         />
         {isRegister && (
           <>
-            <input 
-              placeholder="Confirm Password" 
-              type="password" 
-              value={confirmPassword} 
-              onChange={e=>setConfirmPassword(e.target.value)}
+            <input
+              placeholder="Confirm Password"
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
               required
             />
-            <input 
-              placeholder="Email" 
+            <input
+              placeholder="Email"
               type="email"
               value={email}
-              onChange={e=>setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               required
             />
-            
+
           </>
         )}
         <div>
           <button className="btn" type="submit">{isRegister ? 'Register' : 'Login'}</button>
-          <button 
-            className="btn" 
-            type="button" 
-            onClick={()=>{
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
               setIsRegister(!isRegister)
               setErr(null)
               setPassword("")
               setConfirmPassword("")
-            }} 
-            style={{marginLeft:8}}
+            }}
+            style={{ marginLeft: 8 }}
           >
             {isRegister ? 'Back to login' : 'New user? Register here'}
           </button>
         </div>
-        {err && <p style={{color:'red'}}>{err}</p>}
+        {err && <p style={{ color: 'red' }}>{err}</p>}
       </form>
     </div>
   )
 }
 
-function Navbar({user, onLogout}){
+function Navbar({ user, onLogout }) {
   return (
     <div className="nav">
       <div>potbot</div>
       <div>
-        <span style={{marginRight:12}}>Hello{user && user.username ? ' '+ user.username : ''}</span>
-        <a href="#" onClick={(e)=>{e.preventDefault(); onLogout()}}>Logout</a>
+        <span style={{ marginRight: 12 }}>Hello{user && user.username ? ' ' + user.username : ''}</span>
+        <a href="#" onClick={(e) => { e.preventDefault(); onLogout() }}>Logout</a>
       </div>
     </div>
   )
 }
 
-function App(){
-  const [user, setUser] = useState(null)
+function App() {
+  // user state and a wrapper setter that persists to localStorage
+  const [user, setUserState] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(()=>{
-    // check session
+  function setUser(u) {
+    // update React state and persist minimal user info locally
+    setUserState(u)
+    try {
+      if (u) {
+        console.log("setting potbot_user in local storage")
+        localStorage.setItem('potbot_user', JSON.stringify(u))
+      } else {
+        localStorage.removeItem('potbot_user')
+      }
+    } catch (e) {
+      // ignore storage errors
+      console.warn('localStorage error', e)
+    }
+  }
+
+  useEffect(() => {
+    // hydrate from localStorage first so UI feels instantaneous on refresh
+    try {
+      const cached = localStorage.getItem('potbot_user')
+      if (cached) {
+        console.log("found result in cached storage")
+        setUser(JSON.parse(cached))
+      } else {
+        console.log("nothing in cached storage")
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // then verify the session with the server and correct state if needed
     fetch('/api/me', { credentials: 'include' })
-      .then(res=>{
-        if (!res.ok) throw new Error('no session')
+      .then(res => {
+        if (!res.ok) {
+          console.log("RES NOT OK")
+          console.log(res)
+          throw new Error('no session')
+        }
+        
+        
         return res.json()
       })
-      .then(u=> setUser(u) )
-      .catch(()=>{})
-      .finally(()=> setLoading(false))
-  },[])
+      .then(u => {
+          console.log("verified that the user is user " + u)
+       })
+      .catch(err => {
+        // server says unauthenticated -> clear any cached user
+        console.log("server says unauthenticated " + err)
+        setUser(null)
+      })
+      .finally(() => setLoading(false))
+  }, [])
 
-  async function logout(){
-    await fetch('/api/logout', { method: 'POST', credentials:'include' })
+  async function logout() {
+    await fetch('/api/logout', { method: 'POST', credentials: 'include' })
     setUser(null)
   }
 
@@ -136,11 +178,11 @@ function App(){
   if (!user) return <Landing setUser={setUser} />
 
   return (
-    <div style={{height:'100%'}}>
+    <div style={{ height: '100%' }}>
       <Navbar user={user} onLogout={logout} />
       <div className="container">
-  <h3>Welcome — this is a blank page.</h3>
-  <p>You're logged in as: {user.username}</p>
+        <h3>Welcome — this is a blank page.</h3>
+        <p>You're logged in as: {user.username}</p>
       </div>
     </div>
   )
