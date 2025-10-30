@@ -53,14 +53,6 @@ func main() {
 
     hashKey := os.Getenv("POTBOT_HASH_KEY")
     blockKey := os.Getenv("POTBOT_BLOCK_KEY")
-    if hashKey == "" {
-        hashKey = string(securecookie.GenerateRandomKey(32))
-		// fmt.Println(hashKey)
-    }
-    if blockKey == "" {
-        blockKey = string(securecookie.GenerateRandomKey(32))
-		// fmt.Println(hashKey)
-    }
     s = securecookie.New([]byte(hashKey), []byte(blockKey))
 
     http.HandleFunc("/api/register", withCORS(handleRegister))
