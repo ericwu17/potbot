@@ -138,17 +138,21 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
     var req struct {
-        Email    string `json:"email"`
+        Username string `json:"username"`
         Password string `json:"password"`
     }
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "bad request", http.StatusBadRequest)
         return
     }
+    if req.Username == "" || req.Password == "" {
+        http.Error(w, "username and password required", http.StatusBadRequest)
+        return
+    }
     var id int
     var hash string
-    var username sql.NullString
-    err := db.QueryRow("SELECT user_id, password_hash, username FROM users WHERE email = ?", req.Email).Scan(&id, &hash, &username)
+    var email string
+    err := db.QueryRow("SELECT user_id, password_hash, email FROM users WHERE username = ?", req.Username).Scan(&id, &hash, &email)
     if err != nil {
         http.Error(w, "invalid credentials", http.StatusUnauthorized)
         return
@@ -158,10 +162,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
     setSessionCookie(w, id)
-    user := User{UserID: id, Email: req.Email}
-    if username.Valid {
-        user.Username = username.String
-    }
+    user := User{UserID: id, Email: email, Username: req.Username}
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(user)
 }
