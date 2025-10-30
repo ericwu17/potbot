@@ -89,7 +89,7 @@ function Landing({setUser}){
             }} 
             style={{marginLeft:8}}
           >
-            {isRegister ? 'Switch to login' : 'Switch to register'}
+            {isRegister ? 'Back to login' : 'New user? Register here'}
           </button>
         </div>
         {err && <p style={{color:'red'}}>{err}</p>}
