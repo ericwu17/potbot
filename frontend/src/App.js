@@ -24,6 +24,7 @@ function App() {
   const [user, setUserState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('home')
+  const [plants, setPlants] = useState(null)
 
   function setUser(u) {
     // update React state and persist minimal user info locally
@@ -70,6 +71,26 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
+  // fetch plants when we have a logged-in user and are on the home view
+  useEffect(() => {
+    if (!user) {
+      setPlants(null)
+      return
+    }
+    if (view !== 'home') return
+
+    fetch('/api/getallmyplants', { credentials: 'include' })
+      .then(res => {
+        if (!res.ok) throw new Error('failed')
+        return res.json()
+      })
+      .then(data => setPlants(data))
+      .catch(err => {
+        console.warn('could not fetch plants', err)
+        setPlants([])
+      })
+  }, [user, view])
+
   async function logout() {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' })
     setUser(null)
@@ -91,7 +112,20 @@ function App() {
           <AddPlant onDone={() => setView('home')} />
         ) : (
           <>
-            <h3>Welcome — this is a blank page, since you don't have any plants yet.</h3>
+            {plants && plants.length > 0 ? (
+              <div>
+                <h3>Your plants</h3>
+                <ul>
+                  {plants.map((p, i) => (
+                    <li key={i}>{p.plantId} — {p.type}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <>
+                <h3>Welcome — this is a blank page, since you don't have any plants yet.</h3>
+              </>
+            )}
             <p>You're logged in as: {user.username}</p>
           </>
         )}

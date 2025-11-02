@@ -60,6 +60,7 @@ func main() {
 	http.HandleFunc("/api/logout", withCORS(handleLogout))
 	http.HandleFunc("/api/me", withCORS(handleMe))
 	http.HandleFunc("/api/add_plant", withCORS(handleAddPlant))
+	http.HandleFunc("/api/getallmyplants", withCORS(handleGetAllMyPlants))
 
 	// Serve frontend static if built into ./frontend/build
 	fs := http.FileServer(http.Dir("../frontend/build"))
@@ -251,6 +252,55 @@ func getSessionUserID(r *http.Request) (int, bool) {
 		return 0, false
 	}
 	return id, true
+}
+
+func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := getSessionUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Query plants for the user. Return plantId and type to match frontend usage.
+	rows, err := db.Query("SELECT plant_id, plant_type FROM plants WHERE user_id = ?", userID)
+	if err != nil {
+		log.Printf("Error querying plants: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type Plant struct {
+		PlantID string `json:"plantId"`
+		Type    string `json:"type"`
+	}
+
+	var plants []Plant
+	for rows.Next() {
+		var pid sql.NullString
+		var ptype sql.NullString
+		if err := rows.Scan(&pid, &ptype); err != nil {
+			log.Printf("Error scanning plant row: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+		p := Plant{}
+		if pid.Valid {
+			p.PlantID = pid.String
+		}
+		if ptype.Valid {
+			p.Type = ptype.String
+		}
+		plants = append(plants, p)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(plants)
 }
 
 func handleAddPlant(w http.ResponseWriter, r *http.Request) {
