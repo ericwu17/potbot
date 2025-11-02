@@ -69,7 +69,7 @@ func main() {
 		port = "8080"
 	}
 	log.Printf("listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	http.ListenAndServe(":"+port, nil)
 }
 
 func withCORS(h http.HandlerFunc) http.HandlerFunc {
@@ -175,7 +175,6 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 	id, ok := getSessionUserID(r)
 	if !ok {
-		fmt.Println("unauthenticated")
 		http.Error(w, "unauthenticated", http.StatusUnauthorized)
 		return
 	}
@@ -216,6 +215,8 @@ func setSessionCookie(w http.ResponseWriter, userID int) {
 			MaxAge:   86400,
 		}
 		http.SetCookie(w, cookie)
+	} else {
+		log.Printf("Error encoding cookie: %v", err)
 	}
 }
 
@@ -233,11 +234,6 @@ func clearSessionCookie(w http.ResponseWriter) {
 func getSessionUserID(r *http.Request) (int, bool) {
 	c, err := r.Cookie(cookieName)
 
-	// Log out all the cookies in r
-	for _, cookie := range r.Cookies() {
-		fmt.Printf("Cookie: %s = %s\n", cookie.Name, cookie.Value)
-	}
-
 	if err != nil {
 		return 0, false
 	}
@@ -246,7 +242,6 @@ func getSessionUserID(r *http.Request) (int, bool) {
 		return 0, false
 	}
 	id_str, ok := value["user_id"]
-	fmt.Println("user id is " + id_str)
 	if !ok {
 		return 0, false
 	}

@@ -120,7 +120,6 @@ function App() {
     setUserState(u)
     try {
       if (u) {
-        console.log("setting potbot_user in local storage")
         localStorage.setItem('potbot_user', JSON.stringify(u))
       } else {
         localStorage.removeItem('potbot_user')
@@ -136,10 +135,7 @@ function App() {
     try {
       const cached = localStorage.getItem('potbot_user')
       if (cached) {
-        console.log("found result in cached storage")
         setUser(JSON.parse(cached))
-      } else {
-        console.log("nothing in cached storage")
       }
     } catch (e) {
       // ignore
@@ -149,8 +145,6 @@ function App() {
     fetch('/api/me', { credentials: 'include' })
       .then(res => {
         if (!res.ok) {
-          console.log("RES NOT OK")
-          console.log(res)
           throw new Error('no session')
         }
         
