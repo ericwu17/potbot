@@ -59,6 +59,7 @@ func main() {
 	http.HandleFunc("/api/login", withCORS(handleLogin))
 	http.HandleFunc("/api/logout", withCORS(handleLogout))
 	http.HandleFunc("/api/me", withCORS(handleMe))
+	http.HandleFunc("/api/add_plant", withCORS(handleAddPlant))
 
 	// Serve frontend static if built into ./frontend/build
 	fs := http.FileServer(http.Dir("../frontend/build"))
@@ -250,4 +251,53 @@ func getSessionUserID(r *http.Request) (int, bool) {
 		return 0, false
 	}
 	return id, true
+}
+
+func handleAddPlant(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if user is authenticated
+	userID, ok := getSessionUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		PlantID string `json:"plantId"`
+		Type    string `json:"type"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate request
+	if req.PlantID == "" || req.Type == "" {
+		http.Error(w, "plantId and type are required", http.StatusBadRequest)
+		return
+	}
+
+	// Insert the plant
+	_, err := db.Exec(
+		"INSERT INTO plants (user_id, plant_id, plant_type) VALUES (?, ?, ?)",
+		userID, req.PlantID, req.Type,
+	)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
+			http.Error(w, "plant_id already exists", http.StatusConflict)
+			return
+		}
+		log.Printf("Error inserting plant: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
