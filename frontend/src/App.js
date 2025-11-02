@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import Landing from './Landing'
+import AddPlant from './AddPlant'
 
 
-function Navbar({ user, onLogout }) {
+function Navbar({ user, onLogout, onNavigate }) {
   return (
     <div className="nav">
-      <div>potbot</div>
+      <div>
+        <a href="#" onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('home') }}>potbot</a>
+      </div>
       <div>
         <span style={{ marginRight: 12 }}></span>
-        <a href="#" onClick={(e) => { e.preventDefault(); console.log("Add a new plant not implemented") }}>Add a new plant</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('add') }}>Add a new plant</a>
         <span style={{ marginRight: 12 }}></span>
         <a href="#" onClick={(e) => { e.preventDefault(); onLogout() }}>Logout</a>
       </div>
@@ -20,6 +23,7 @@ function App() {
   // user state and a wrapper setter that persists to localStorage
   const [user, setUserState] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('home')
 
   function setUser(u) {
     // update React state and persist minimal user info locally
@@ -53,16 +57,14 @@ function App() {
         if (!res.ok) {
           throw new Error('no session')
         }
-        
-        
         return res.json()
       })
       .then(u => {
-          console.log("verified that the user is user " + u)
-       })
+        // set verified user
+        setUser(u)
+      })
       .catch(err => {
         // server says unauthenticated -> clear any cached user
-        console.log("server says unauthenticated " + err)
         setUser(null)
       })
       .finally(() => setLoading(false))
@@ -73,16 +75,26 @@ function App() {
     setUser(null)
   }
 
+  function navigate(target) {
+    setView(target)
+  }
+
   if (loading) return <div className="container">Loading...</div>
 
   if (!user) return <Landing setUser={setUser} />
 
   return (
     <div style={{ height: '100%' }}>
-      <Navbar user={user} onLogout={logout} />
+      <Navbar user={user} onLogout={logout} onNavigate={navigate} />
       <div className="container">
-        <h3>Welcome — this is a blank page, since you don't have any plants yet.</h3>
-        <p>You're logged in as: {user.username}</p>
+        {view === 'add' ? (
+          <AddPlant onDone={() => setView('home')} />
+        ) : (
+          <>
+            <h3>Welcome — this is a blank page, since you don't have any plants yet.</h3>
+            <p>You're logged in as: {user.username}</p>
+          </>
+        )}
       </div>
     </div>
   )
