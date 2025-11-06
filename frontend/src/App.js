@@ -115,15 +115,16 @@ function App() {
             {plants && plants.length > 0 ? (
               <div>
                 <h3>Your plants</h3>
+                <p>To do: implement this page as a list of icons, and also show the "last connected" time of each plant.</p>
                 <ul>
                   {plants.map((p, i) => (
-                    <li key={i}>{p.plantId} — {p.type}</li>
+                    <li key={i}>{p.plantId} of type: {p.type}</li>
                   ))}
                 </ul>
               </div>
             ) : (
               <>
-                <h3>Welcome — this is a blank page, since you don't have any plants yet.</h3>
+                <h3>Welcome. This is a blank page, since you don't have any plants yet.</h3>
               </>
             )}
             <p>You're logged in as: {user.username}</p>

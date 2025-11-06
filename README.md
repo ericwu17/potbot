@@ -1,82 +1,73 @@
-# potbot — minimal auth demo
+# potbot
 
 This project contains a minimal backend (Go) and frontend (React) implementing user registration, login, logout, and a simple post-login blank page with a navbar.
 
 Folders:
-- `backend/` — Go server that exposes REST endpoints: `/api/register`, `/api/login`, `/api/logout`, `/api/me`.
-- `frontend/` — React app (CRA-style) that talks to the backend using fetch and cookies.
+- `backend/`. Go server that exposes REST endpoints: `/api/register`, `/api/login`, `/api/logout`, `/api/me`.
+- `frontend/`. React app (CRA-style) that talks to the backend using fetch and cookies.
 
-Database:
-The project expects a MySQL database named `potbot` with a `users` table. Use the provided migration:
+## Running the app
 
-```sql
--- backend/MIGRATION.sql
-CREATE DATABASE IF NOT EXISTS potbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE potbot;
-CREATE TABLE IF NOT EXISTS users (
-  user_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  username VARCHAR(50) NULL UNIQUE
-);
-```
+In the `backend` folder:
 
-Run instructions (macOS, zsh):
-
-1) Prepare DB and env
-
-Set up your MySQL server and create the `potbot` DB using the migration above. Then set environment variables for the backend (or use the defaults):
-
-```zsh
-export POTBOT_DB_DSN='root:password@tcp(127.0.0.1:3306)/potbot?parseTime=true'
-export POTBOT_HASH_KEY='replace-with-32-byte-random'
-export POTBOT_BLOCK_KEY='replace-with-32-byte-random'
-export PORT=8080
-```
-
-2) Backend (Go)
-
-Install Go (if you don't have it):
-
-```zsh
-brew install go
-```
-
-Then in the `backend` folder:
-
-```zsh
+```bash
 cd backend
 go mod tidy
-go build -o potbot-server
-./potbot-server
+go run .
 ```
 
-By default the server listens on `:8080` and serves the API and any static files if you build the frontend into `frontend/build`.
+The backend folder also requires a `.env` file that has contents in the format of `.env.template`.
 
-3) Frontend (React)
+By default the server listens on `:8080`.
 
-Install Node (if necessary):
+In the `frontend` folder:
 
-```zsh
-brew install node
-```
-
-From the `frontend` folder:
-
-```zsh
+```bash
 cd frontend
 npm install
 npm start
 ```
 
-The frontend runs on `http://localhost:3000` and expects the backend to be at `http://localhost:8080`. The frontend uses cookies (credentials included) to maintain session.
+The frontend runs on `http://localhost:3000` and expects the backend to be at `http://localhost:8080`. The frontend uses cookies to maintain session.
 
-Notes and assumptions
-- The backend uses a signed cookie to store a session (user_id). For production use enable Secure cookies and HTTPS.
-- Passwords are stored hashed with bcrypt.
-- Email uniqueness is enforced by the DB schema.
+## Database
 
-Next steps / improvements
-- Add CSRF protection and HTTPS.
-- Use a proper session store for server-side sessions.
-- Add input validation and friendly UI / mobile styling.
+The backend will try to connect to a mysql database with a database named `potbot`.
+
+The current schema is below, which is subject to change:
+
+```sql
+mysql> desc plants
+    -> ;
++------------+--------------+------+-----+---------+----------------+
+| Field      | Type         | Null | Key | Default | Extra          |
++------------+--------------+------+-----+---------+----------------+
+| id         | int          | NO   | PRI | NULL    | auto_increment |
+| user_id    | int          | NO   |     | NULL    |                |
+| plant_id   | varchar(100) | NO   | UNI | NULL    |                |
+| plant_type | varchar(100) | NO   |     | NULL    |                |
++------------+--------------+------+-----+---------+----------------+
+4 rows in set (0.01 sec)
+
+mysql> desc users;
++---------------+--------------+------+-----+---------+----------------+
+| Field         | Type         | Null | Key | Default | Extra          |
++---------------+--------------+------+-----+---------+----------------+
+| user_id       | int          | NO   | PRI | NULL    | auto_increment |
+| email         | varchar(255) | NO   | UNI | NULL    |                |
+| password_hash | varchar(255) | NO   |     | NULL    |                |
+| username      | varchar(50)  | YES  | UNI | NULL    |                |
++---------------+--------------+------+-----+---------+----------------+
+4 rows in set (0.00 sec)
+
+mysql> show tables;
++------------------+
+| Tables_in_potbot |
++------------------+
+| plants           |
+| users            |
++------------------+
+2 rows in set (0.00 sec)
+
+```
+
