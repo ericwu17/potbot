@@ -63,6 +63,7 @@ func main() {
 	http.HandleFunc("/api/add_plant", withCORS(handleAddPlant))
 	http.HandleFunc("/api/get_all_my_plants", withCORS(handleGetAllMyPlants))
 	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))
+	http.HandleFunc("/api/ping", withCORS(handlePing))
 
 	// Serve frontend static if built into ./frontend/build
 	fs := http.FileServer(http.Dir("../frontend/build"))
@@ -409,4 +410,9 @@ func handleGeneratePlants(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string][]string{"plantIds": plantIDs, "plantSecrets": plantSecrets})
+}
+
+func handlePing(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("pong"))
 }

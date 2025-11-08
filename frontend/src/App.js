@@ -94,6 +94,7 @@ function App() {
   async function logout() {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' })
     setUser(null)
+    setView('home')
   }
 
   function navigate(target) {
