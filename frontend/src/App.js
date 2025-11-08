@@ -79,7 +79,7 @@ function App() {
     }
     if (view !== 'home') return
 
-    fetch('/api/getallmyplants', { credentials: 'include' })
+    fetch('/api/get_all_my_plants', { credentials: 'include' })
       .then(res => {
         if (!res.ok) throw new Error('failed')
         return res.json()
@@ -118,7 +118,7 @@ function App() {
                 <p>To do: implement this page as a list of icons, and also show the "last connected" time of each plant.</p>
                 <ul>
                   {plants.map((p, i) => (
-                    <li key={i}>{p.plantId} of type: {p.type}</li>
+                    <li key={i}>{p.plantName} of type: {p.type}</li>
                   ))}
                 </ul>
               </div>

@@ -4,6 +4,7 @@ const PLANT_TYPES = ['tomato', 'basil', 'succulent']
 
 export default function AddPlant({ onDone }) {
   const [plantId, setPlantId] = useState('')
+  const [plantName, setPlantName] = useState('')
   const [type, setType] = useState(PLANT_TYPES[0])
   const [error, setError] = useState(null)
   const [status, setStatus] = useState(null)
@@ -19,6 +20,12 @@ export default function AddPlant({ onDone }) {
       return
     }
 
+    const trimmedName = (plantName || '').trim()
+    if (!trimmedName) {
+      setError('Plant name is required')
+      return
+    }
+
     if (!PLANT_TYPES.includes(type)) {
       setError('Invalid plant type')
       return
@@ -30,12 +37,13 @@ export default function AddPlant({ onDone }) {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plantId: trimmedId, type })
+        body: JSON.stringify({ plantId: trimmedId, plantName: trimmedName, type })
       })
 
       if (res.ok) {
         setStatus('Plant added successfully')
         setPlantId('')
+        setPlantName('')
         setType(PLANT_TYPES[0])
         // call onDone to return to previous view if provided
         if (onDone) onDone()
@@ -62,6 +70,19 @@ export default function AddPlant({ onDone }) {
               value={plantId}
               onChange={(e) => setPlantId(e.target.value)}
               placeholder="e.g. plant-123"
+            />
+          </label>
+        </div>
+
+        <div style={{ marginBottom: 8 }}>
+          <label>
+            Plant name (for your convenience)
+            <br />
+            <input
+              type="text"
+              value={plantName}
+              onChange={(e) => setPlantName(e.target.value)}
+              placeholder="e.g. my favorite cactus"
             />
           </label>
         </div>

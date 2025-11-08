@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -60,7 +61,8 @@ func main() {
 	http.HandleFunc("/api/logout", withCORS(handleLogout))
 	http.HandleFunc("/api/me", withCORS(handleMe))
 	http.HandleFunc("/api/add_plant", withCORS(handleAddPlant))
-	http.HandleFunc("/api/getallmyplants", withCORS(handleGetAllMyPlants))
+	http.HandleFunc("/api/get_all_my_plants", withCORS(handleGetAllMyPlants))
+	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))
 
 	// Serve frontend static if built into ./frontend/build
 	fs := http.FileServer(http.Dir("../frontend/build"))
@@ -184,7 +186,6 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 	var username sql.NullString
 	err := db.QueryRow("SELECT user_id, email, username FROM users WHERE user_id = ?", id).Scan(&u.UserID, &u.Email, &username)
 	if err != nil {
-		fmt.Println("user not found")
 		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
 	}
@@ -266,8 +267,8 @@ func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Query plants for the user. Return plantId and type to match frontend usage.
-	rows, err := db.Query("SELECT plant_id, plant_type FROM plants WHERE user_id = ?", userID)
+	// Query plants for the user. Return plantName and type to match frontend usage.
+	rows, err := db.Query("SELECT plant_name, plant_type FROM plants WHERE user_id = ?", userID)
 	if err != nil {
 		log.Printf("Error querying plants: %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -276,22 +277,22 @@ func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type Plant struct {
-		PlantID string `json:"plantId"`
-		Type    string `json:"type"`
+		PlantName string `json:"plantName"`
+		Type      string `json:"type"`
 	}
 
 	var plants []Plant
 	for rows.Next() {
-		var pid sql.NullString
+		var pname sql.NullString
 		var ptype sql.NullString
-		if err := rows.Scan(&pid, &ptype); err != nil {
+		if err := rows.Scan(&pname, &ptype); err != nil {
 			log.Printf("Error scanning plant row: %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
 		p := Plant{}
-		if pid.Valid {
-			p.PlantID = pid.String
+		if pname.Valid {
+			p.PlantName = pname.String
 		}
 		if ptype.Valid {
 			p.Type = ptype.String
@@ -318,8 +319,9 @@ func handleAddPlant(w http.ResponseWriter, r *http.Request) {
 
 	// Parse request body
 	var req struct {
-		PlantID string `json:"plantId"`
-		Type    string `json:"type"`
+		PlantID   string `json:"plantId"`
+		PlantName string `json:"plantName"`
+		Type      string `json:"type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -332,17 +334,26 @@ func handleAddPlant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insert the plant
-	_, err := db.Exec(
-		"INSERT INTO plants (user_id, plant_id, plant_type) VALUES (?, ?, ?)",
-		userID, req.PlantID, req.Type,
-	)
+	// Check if the plant ID exists and is not already associated with a user
+	var existingUserID sql.NullInt64
+	err := db.QueryRow("SELECT user_id FROM plants WHERE plant_id = ?", req.PlantID).Scan(&existingUserID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "invalid plant ID", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Printf("Error checking plant ID: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	if existingUserID.Valid {
+		http.Error(w, "plant ID already associated with a user", http.StatusBadRequest)
+		return
+	}
+
+	// Associate plant with user
+	_, err = db.Exec("UPDATE plants SET user_id = ?, plant_type = ?, plant_name = ? WHERE plant_id = ?", userID, req.Type, req.PlantName, req.PlantID)
 	if err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
-			http.Error(w, "plant_id already exists", http.StatusConflict)
-			return
-		}
-		log.Printf("Error inserting plant: %v", err)
+		log.Printf("Error associating plant with user: %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
@@ -350,4 +361,52 @@ func handleAddPlant(w http.ResponseWriter, r *http.Request) {
 	// Return success
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+}
+
+func generateAlphanumeric(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(result)
+}
+
+func handleGeneratePlants(w http.ResponseWriter, r *http.Request) {
+	// Generate 10 ids in the form of plant_xxxxx where xxxxx is a random 5 digit number
+	log.Println("Generating 10 plant IDs and secrets")
+	var plantIDs []string
+	var plantSecrets []string
+	for len(plantIDs) < 10 {
+		plantID := fmt.Sprintf("plant_%05d", rand.Int()%100000)
+		// check if plantID is already in the database
+		var exists bool
+		err := db.QueryRow("SELECT plant_id FROM plants WHERE plant_id = ?", plantID).Scan(&exists)
+		if err == sql.ErrNoRows {
+			plant_secret := generateAlphanumeric(16)
+			plant_secret_hash, err := bcrypt.GenerateFromPassword([]byte(plant_secret), bcrypt.DefaultCost)
+			if err != nil {
+				log.Printf("Error hashing plant secret: %v", err)
+				http.Error(w, "server error", http.StatusInternalServerError)
+				return
+			}
+			// insert plantID and plant_secret_hash into plants table
+			_, err = db.Exec("INSERT INTO plants (plant_id, plant_secret_hash) VALUES (?, ?)", plantID, plant_secret_hash)
+			if err != nil {
+				log.Printf("Error inserting plant: %v", err)
+				http.Error(w, "server error", http.StatusInternalServerError)
+				return
+			}
+			plantIDs = append(plantIDs, plantID)
+			plantSecrets = append(plantSecrets, plant_secret)
+		} else if err != nil {
+			log.Printf("Error checking plant ID existence: %v", err)
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string][]string{"plantIds": plantIDs, "plantSecrets": plantSecrets})
 }
