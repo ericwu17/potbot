@@ -48,16 +48,24 @@ func main() {
 	blockKey := os.Getenv("POTBOT_BLOCK_KEY")
 	secCookie = securecookie.New([]byte(hashKey), []byte(blockKey))
 
+	// creds
 	http.HandleFunc("/api/register", withCORS(handleRegister))
 	http.HandleFunc("/api/login", withCORS(handleLogin))
 	http.HandleFunc("/api/logout", withCORS(handleLogout))
 	http.HandleFunc("/api/me", withCORS(handleMe))
+
+	// user
 	http.HandleFunc("/api/add_plant", withCORS(handleAddPlant))
 	http.HandleFunc("/api/get_all_my_plants", withCORS(handleGetAllMyPlants))
-	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))
-	http.HandleFunc("/api/ping", withCORS(handlePing))
+	http.HandleFunc("/api/get_plant_logs", withCORS(handleGetPlantLogs))
+
+	// plant
 	http.HandleFunc("/api/verify_plant_creds", withCORS(handleVerifyPlantCreds))
 	http.HandleFunc("/api/plant_log", withCORS(handlePlantLog))
+
+	// utils
+	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))
+	http.HandleFunc("/api/ping", withCORS(handlePing))
 
 	// Serve frontend static if built into ./frontend/build
 	fs := http.FileServer(http.Dir("../frontend/build"))
