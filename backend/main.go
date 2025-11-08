@@ -57,6 +57,7 @@ func main() {
 	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))
 	http.HandleFunc("/api/ping", withCORS(handlePing))
 	http.HandleFunc("/api/verify_plant_creds", withCORS(handleVerifyPlantCreds))
+	http.HandleFunc("/api/plant_log", withCORS(handlePlantLog))
 
 	// Serve frontend static if built into ./frontend/build
 	fs := http.FileServer(http.Dir("../frontend/build"))
