@@ -24,7 +24,7 @@ func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Query plants for the user. Return plantName and type to match frontend usage.
-	rows, err := db.Query("SELECT plant_name, plant_type FROM plants WHERE user_id = ?", userID)
+	rows, err := db.Query("SELECT plant_name, plant_id, plant_type FROM plants WHERE user_id = ?", userID)
 	if err != nil {
 		log.Printf("Error querying plants: %v", err)
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -34,6 +34,7 @@ func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
 
 	type Plant struct {
 		PlantName string `json:"plantName"`
+		PlantID   string `json:"plantID"`
 		Type      string `json:"type"`
 	}
 
@@ -41,7 +42,8 @@ func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var pname sql.NullString
 		var ptype sql.NullString
-		if err := rows.Scan(&pname, &ptype); err != nil {
+		var pid sql.NullString
+		if err := rows.Scan(&pname, &pid, &ptype); err != nil {
 			log.Printf("Error scanning plant row: %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
@@ -52,6 +54,9 @@ func handleGetAllMyPlants(w http.ResponseWriter, r *http.Request) {
 		}
 		if ptype.Valid {
 			p.Type = ptype.String
+		}
+		if pid.Valid {
+			p.PlantID = pid.String
 		}
 		plants = append(plants, p)
 	}
@@ -120,14 +125,14 @@ func handleAddPlant(w http.ResponseWriter, r *http.Request) {
 }
 
 type PlantLogsRequest struct {
-	PlantID   string    `json:"plantId"`
+	PlantID   string    `json:"plantID"`
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 }
 
 type PlantLogEntry struct {
-	val  float64   `json:"val"`
-	time time.Time `json:"time"`
+	Val  float64   `json:"val"`
+	Time time.Time `json:"time"`
 }
 
 // handleGetPlantLogs retrieves sensor logs for a specific plant within a date range.
@@ -136,7 +141,7 @@ type PlantLogEntry struct {
 // Expects a POST request with JSON body:
 //
 //	{
-//	    "plantId": "string",      // ID of the plant to get logs for
+//	    "plantID": "string",      // ID of the plant to get logs for
 //	    "startDate": "time",      // Start of date range (RFC3339 format)
 //	    "endDate": "time"         // End of date range (RFC3339 format)
 //	}
@@ -203,12 +208,20 @@ func handleGetPlantLogs(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var logEntry PlantLogEntry
 
+		var logTimeStr string
+
 		var type_ string
-		if err := rows.Scan(&type_, &logEntry.val, &logEntry.time); err != nil {
+		if err := rows.Scan(&type_, &logEntry.Val, &logTimeStr); err != nil {
 			log.Printf("Error scanning plant log row: %v", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 			return
 		}
+		logEntry.Time, err = time.Parse("2006-01-02 15:04:05", logTimeStr)
+		if err != nil {
+			log.Printf("Unable to parse time string: %s", logTimeStr)
+			continue
+		}
+
 		if !slices.Contains(validLogTypes, type_) {
 			log.Printf("Unknown log type in database: %v", type_)
 			continue

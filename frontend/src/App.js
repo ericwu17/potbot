@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Landing from './Landing'
 import AddPlant from './AddPlant'
+import PlantDetails from './PlantDetails'
 
 
 function Navbar({ user, onLogout, onNavigate }) {
@@ -25,6 +26,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('home')
   const [plants, setPlants] = useState(null)
+  const [selectedPlant, setSelectedPlant] = useState(null)
 
   function setUser(u) {
     // update React state and persist minimal user info locally
@@ -105,6 +107,24 @@ function App() {
 
   if (!user) return <Landing setUser={setUser} />
 
+
+  // Render plant details view
+  if (view === 'details') {
+    return (
+      <div style={{ height: '100%' }}>
+        <Navbar user={user} onLogout={logout} onNavigate={navigate} />
+        <div className="container">
+          <button onClick={() => { setView('home'); setSelectedPlant(null) }}>Back</button>
+          {selectedPlant ? (
+            <PlantDetails plantID={selectedPlant} />
+          ) : (
+            <p>No plant selected.</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ height: '100%' }}>
       <Navbar user={user} onLogout={logout} onNavigate={navigate} />
@@ -119,7 +139,10 @@ function App() {
                 <p>To do: implement this page as a list of icons, and also show the "last connected" time of each plant.</p>
                 <ul>
                   {plants.map((p, i) => (
-                    <li key={i}>{p.plantName} of type: {p.type}</li>
+                    <li key={i}>
+                      {p.plantName} of type: {p.type}
+                      <button style={{ marginLeft: 12 }} onClick={() => { setSelectedPlant(p.plantID); setView('details') }}>Details</button>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -136,4 +159,4 @@ function App() {
   )
 }
 
-export default App
+  export default App
