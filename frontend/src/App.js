@@ -114,9 +114,9 @@ function App() {
       <div style={{ height: '100%' }}>
         <Navbar user={user} onLogout={logout} onNavigate={navigate} />
         <div className="container">
-          <button onClick={() => { setView('home'); setSelectedPlant(null) }}>Back</button>
+          {/* <button onClick={() => { setView('home'); setSelectedPlant(null) }}>Back to home</button> */}
           {selectedPlant ? (
-            <PlantDetails plantID={selectedPlant} />
+            <PlantDetails plantID={selectedPlant.plantID} plantName={selectedPlant.plantName} />
           ) : (
             <p>No plant selected.</p>
           )}
@@ -141,7 +141,7 @@ function App() {
                   {plants.map((p, i) => (
                     <li key={i}>
                       {p.plantName} of type: {p.type}
-                      <button style={{ marginLeft: 12 }} onClick={() => { setSelectedPlant(p.plantID); setView('details') }}>Details</button>
+                      <button style={{ marginLeft: 12 }} onClick={() => { setSelectedPlant(p); setView('details') }}>Details</button>
                     </li>
                   ))}
                 </ul>

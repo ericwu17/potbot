@@ -12,7 +12,7 @@ function formatISODate(date) {
     return date.toISOString().slice(0, 10)
 }
 
-export default function PlantDetails({ plantID }) {
+export default function PlantDetails({ plantID, plantName }) {
     const now = new Date()
     const defaultEnd = now.toISOString()
     const defaultStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -60,13 +60,23 @@ export default function PlantDetails({ plantID }) {
     }, [plantID, startDate, endDate])
 
 
+    var details = null;
+
     if (loading) {
-        return <div>Loading...</div>
+        details = <div>Loading...</div>;
+    } else if (error) {
+        details = <div className="error">Error: {error}</div>;
+    } else {
+        console.log(logs);
+        details = <>{JSON.stringify(logs)}</>;
     }
 
-    if (error) {
-        return <div className="error">Error: {error}</div>
-    }
 
-    return <div>default state now.</div>
+
+    return (
+        <div>
+            <div>Data for {plantName}:</div>
+            {details}
+        </div>
+    );
 }
