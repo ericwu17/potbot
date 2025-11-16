@@ -16,7 +16,7 @@ function formatISODate(date) {
 export default function PlantDetails({ plantID, plantName }) {
     const now = new Date()
     const defaultEnd = now.toISOString()
-    const defaultStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const defaultStartDate = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000)
     const defaultStart = defaultStartDate.toISOString()
 
     const [startDate, setStartDate] = useState(defaultStart)
@@ -59,6 +59,28 @@ export default function PlantDetails({ plantID, plantName }) {
             })
             .finally(() => setLoading(false))
     }, [plantID, startDate, endDate])
+
+    function issueCommand(plantID, command) {
+        fetch('/api/issue_command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                plantID,
+                command
+            })
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('failed to issue command')
+                alert(`Command "${command}" issued to plant ${plantID} with name ${plantName}`)
+            })
+            .catch(err => {
+                console.warn(err)
+                alert(`Could not issue command "${command}" to plant ${plantID} with name ${plantName}`)
+            })
+    }
 
 
     var details = null;
@@ -162,6 +184,8 @@ export default function PlantDetails({ plantID, plantName }) {
             <div>
                 TODO: show some stats about the data (we might want to show the mean or sum?)
             </div>
+            {/* A button to issue a "water plant" command */}
+            <button onClick={() => issueCommand(plantID, "WATER")}>Water Plant</button>
             {details}
         </div>
     );

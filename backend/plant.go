@@ -112,3 +112,30 @@ func handlePlantLog(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
+
+// handleFetchCommands allows an authenticated plant (via cookies) to fetch
+// all pending commands queued for it. It returns a JSON array of strings
+// and clears the pending commands for that plant.
+func handleFetchCommands(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ok, plantID := verifyPlantCreds(w, r)
+	if !ok {
+		return
+	}
+
+	var cmds []string = make([]string, 0)
+	if pendingCommands != nil {
+		if c, exists := pendingCommands[plantID]; exists {
+			cmds = c
+		}
+		// clear commands for this plant
+		delete(pendingCommands, plantID)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cmds)
+}

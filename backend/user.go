@@ -124,6 +124,69 @@ func handleAddPlant(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
+// Request body for issuing a command to a plant
+type issueCommandRequest struct {
+	PlantID string `json:"plantId"`
+	Command string `json:"command"`
+}
+
+// handleIssueCommand allows an authenticated user to enqueue a command for one of their plants.
+// Expects POST JSON body: { "plantId": "<id>", "command": "<string>" }
+func handleIssueCommand(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := getSessionUserID(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req issueCommandRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.PlantID == "" {
+		http.Error(w, "plantId is required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify ownership
+	var plantOwnerID int
+	err := db.QueryRow("SELECT user_id FROM plants WHERE plant_id = ?", req.PlantID).Scan(&plantOwnerID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "plant not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		log.Printf("Error checking plant ownership: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	if plantOwnerID != userID {
+		http.Error(w, "you do not own this plant", http.StatusForbidden)
+		return
+	}
+
+	// Enqueue command
+	if pendingCommands == nil {
+		pendingCommands = make(map[string][]string)
+	}
+	// Check that the plantID key exists in the pendingCommands map
+	if _, exists := pendingCommands[req.PlantID]; !exists {
+		pendingCommands[req.PlantID] = []string{}
+	}
+
+	pendingCommands[req.PlantID] = append(pendingCommands[req.PlantID], req.Command)
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"status": "queued"})
+}
+
 type PlantLogsRequest struct {
 	PlantID   string    `json:"plantID"`
 	StartDate time.Time `json:"startDate"`

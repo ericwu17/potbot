@@ -14,6 +14,7 @@ import (
 
 var db *sql.DB
 var secCookie *securecookie.SecureCookie
+var pendingCommands map[string][]string
 
 type User struct {
 	UserID   int    `json:"user_id"`
@@ -48,6 +49,9 @@ func main() {
 	blockKey := os.Getenv("POTBOT_BLOCK_KEY")
 	secCookie = securecookie.New([]byte(hashKey), []byte(blockKey))
 
+	// Initialize pendingCommands map for issuing commands to plants
+	pendingCommands = make(map[string][]string)
+
 	// creds
 	http.HandleFunc("/api/register", withCORS(handleRegister))
 	http.HandleFunc("/api/login", withCORS(handleLogin))
@@ -56,12 +60,14 @@ func main() {
 
 	// user
 	http.HandleFunc("/api/add_plant", withCORS(handleAddPlant))
+	http.HandleFunc("/api/issue_command", withCORS(handleIssueCommand))
 	http.HandleFunc("/api/get_all_my_plants", withCORS(handleGetAllMyPlants))
 	http.HandleFunc("/api/get_plant_logs", withCORS(handleGetPlantLogs))
 
 	// plant
 	http.HandleFunc("/api/verify_plant_creds", withCORS(handleVerifyPlantCreds))
 	http.HandleFunc("/api/plant_log", withCORS(handlePlantLog))
+	http.HandleFunc("/api/fetch_commands", withCORS(handleFetchCommands))
 
 	// utils
 	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))
