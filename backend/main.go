@@ -68,6 +68,7 @@ func main() {
 	http.HandleFunc("/api/verify_plant_creds", withCORS(handleVerifyPlantCreds))
 	http.HandleFunc("/api/plant_log", withCORS(handlePlantLog))
 	http.HandleFunc("/api/fetch_commands", withCORS(handleFetchCommands))
+	http.HandleFunc("/api/plant_notify", withCORS(handlePlantNotify))
 
 	// utils
 	http.HandleFunc("/api/generate_plants", withCORS(handleGeneratePlants))

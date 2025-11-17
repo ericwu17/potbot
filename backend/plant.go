@@ -4,6 +4,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"slices"
@@ -138,4 +139,64 @@ func handleFetchCommands(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cmds)
+}
+
+// Request body for plant notifications
+type plantNotifyRequest struct {
+	NotificationType string `json:"notificationType"`
+}
+
+// handlePlantNotify is called by a plant (authenticated via cookies) to notify
+// the owner about an event. It expects JSON body: { "notificationType": "xxxxx" }
+func handlePlantNotify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ok, plantID := verifyPlantCreds(w, r)
+	if !ok {
+		return
+	}
+
+	var req plantNotifyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.NotificationType == "" {
+		http.Error(w, "notification_type is required", http.StatusBadRequest)
+		return
+	}
+
+	// Lookup owner's email for the plant
+	var ownerEmail sql.NullString
+	err := db.QueryRow("SELECT u.email FROM users u JOIN plants p ON p.user_id = u.user_id WHERE p.plant_id = ?", plantID).Scan(&ownerEmail)
+	if err == sql.ErrNoRows || !ownerEmail.Valid {
+		http.Error(w, "plant has no associated user", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		log.Printf("Error querying owner email: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Build subject and body based on notification type
+	subject := fmt.Sprintf("Potbot notification for %s", plantID)
+	body := fmt.Sprintf("Your plant (ID: %s) sent notification: %s", plantID, req.NotificationType)
+	switch req.NotificationType {
+	case "FALLEN":
+		subject = "Your plant has fallen over"
+		body = fmt.Sprintf("Hi — your plant (ID: %s) appears to have fallen over. Please check on it.", plantID)
+	}
+
+	if err := sendEmail(ownerEmail.String, subject, body); err != nil {
+		log.Printf("error sending notification email: %v", err)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "notified"})
 }

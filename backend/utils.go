@@ -8,6 +8,9 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/smtp"
+	"os"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -63,4 +66,36 @@ func handleGeneratePlants(w http.ResponseWriter, r *http.Request) {
 func handlePing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("pong"))
+}
+
+// sendEmail sends a simple plain-text email using SMTP server config from the `.env` file.
+func sendEmail(to, subject, body string) error {
+	from := os.Getenv("POTBOT_EMAIL_ADDRESS")
+	pass := os.Getenv("POTBOT_EMAIL_PASSWORD")
+	mailServer := os.Getenv("POTBOT_MAIL_SERVER")
+	mailPort := os.Getenv("POTBOT_MAIL_PORT")
+
+	if from == "" || pass == "" || mailServer == "" || mailPort == "" {
+		return fmt.Errorf("email configuration not set in environment")
+	}
+
+	auth := smtp.PlainAuth("", from, pass, mailServer)
+
+	headers := map[string]string{
+		"From":         from,
+		"To":           to,
+		"Subject":      subject,
+		"MIME-Version": "1.0",
+		"Content-Type": "text/plain; charset=\"utf-8\"",
+	}
+
+	var msg strings.Builder
+	for k, v := range headers {
+		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+	}
+	msg.WriteString("\r\n")
+	msg.WriteString(body)
+
+	addr := mailServer + ":" + mailPort
+	return smtp.SendMail(addr, auth, from, []string{to}, []byte(msg.String()))
 }
